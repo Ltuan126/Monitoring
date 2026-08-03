@@ -1,3 +1,33 @@
-# TODO (Tuấn): cấu hình scrape_interval, scrape_configs (node-exporter, cadvisor),
-# alerting.alertmanagers, rule_files
-# Xem chi tiết: TaiLieu_BanGiaoNhiemVu_AI.docx - Phần 1
+# Cấu hình Prometheus — phụ trách: Tuấn
+global:
+  scrape_interval: 15s       # chu kỳ thu thập metric
+  evaluation_interval: 15s   # chu kỳ đánh giá Alert rule
+  external_labels:
+    monitor: monitoring-demo
+
+# Nạp Alert rule (file do Hoàng phụ trách)
+rule_files:
+  - /etc/prometheus/rules/alerts.yml
+
+# Đẩy alert đã kích hoạt sang Alertmanager
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+scrape_configs:
+  # Prometheus tự giám sát chính nó
+  - job_name: prometheus
+    static_configs:
+      - targets: ["prometheus:9090"]
+
+  # Tài nguyên của host: CPU, RAM, Disk, Network
+  - job_name: node-exporter
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # Tài nguyên của từng container
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
