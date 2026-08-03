@@ -1,0 +1,13 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Docker volumes if ever bind-mounted locally
+prometheus_data/
+grafana_data/
+
+# Secrets - KHÔNG được commit token/webhook thật
+*.env
+secrets.yml
