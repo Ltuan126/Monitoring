@@ -1,15 +1,108 @@
-version: "3.8"
-
 networks:
   monitoring:
     driver: bridge
 
+volumes:
+  prometheus_data:
+  grafana_data:
+  alertmanager_data:
+
 services:
-  # TODO (Tuấn): khai báo service prometheus, node-exporter, cadvisor
-  # Xem chi tiết: TaiLieu_BanGiaoNhiemVu_AI.docx - Phần 1
+  # ── Tuấn ──────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: prometheus
+    restart: unless-stopped
+    networks: [monitoring]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      # cho phép nạp lại config không cần restart:
+      #   curl -X POST http://localhost:9090/-/reload
+      - --web.enable-lifecycle
+    depends_on:
+      - node-exporter
+      - cadvisor
 
-  # TODO (Quang): khai báo service grafana, mount ./grafana/provisioning
-  # Xem chi tiết: TaiLieu_BanGiaoNhiemVu_AI.docx - Phần 2
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    container_name: node-exporter
+    restart: unless-stopped
+    networks: [monitoring]
+    ports:
+      - "9100:9100"
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      # Lọc filesystem để metric Disk không bị nhiễu.
+      # Trên Docker Desktop/WSL2 mặc định sẽ ra ~60 filesystem do các namespace
+      # /parent-distro, /run/desktop... mount lặp lại cùng một ổ. Sau khi lọc còn:
+      #   /mnt/docker-desktop-disk  (ext4) — ổ đĩa của máy ảo Docker
+      #   /mnt/host/c, /mnt/host/e  (9p)   — ổ C: và E: của Windows
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run|var|tmp|etc|host_mnt|parent-distro|usr)($$|/)|^/mnt$$|^/mnt/host/(wsl|wslg)($$|/)
+      - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|fuse\.rawBridge|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rootfs|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tmpfs|tracefs)$$
 
-  # TODO (Hoàng): khai báo service alertmanager
-  # Xem chi tiết: TaiLieu_BanGiaoNhiemVu_AI.docx - Phần 3
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    restart: unless-stopped
+    networks: [monitoring]
+    ports:
+      - "8080:8080"
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+
+  # ── Quang ─────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: grafana
+    restart: unless-stopped
+    networks: [monitoring]
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+  # ── Hoàng ─────────────────────────────────────────────────────────────
+  # Service này chỉ chạy được sau khi alertmanager/alertmanager.yml có nội dung
+  # thật. Trong lúc file đó còn là TODO, khởi động 4 service kia trước:
+  #   docker compose up -d prometheus node-exporter cadvisor grafana
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    restart: unless-stopped
+    networks: [monitoring]
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
