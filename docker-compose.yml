@@ -1,0 +1,15 @@
+version: "3.8"
+
+networks:
+  monitoring:
+    driver: bridge
+
+services:
+  # TODO (Tuấn): khai báo service prometheus, node-exporter, cadvisor
+  # Xem chi tiết: TaiLieu_BanGiaoNhiemVu_AI.docx - Phần 1
+
+  # TODO (Quang): khai báo service grafana, mount ./grafana/provisioning
+  # Xem chi tiết: TaiLieu_BanGiaoNhiemVu_AI.docx - Phần 2
+
+  # TODO (Hoàng): khai báo service alertmanager
+  # Xem chi tiết: TaiLieu_BanGiaoNhiemVu_AI.docx - Phần 3

@@ -1,0 +1,3 @@
+# TODO (Tuấn): cấu hình scrape_interval, scrape_configs (node-exporter, cadvisor),
+# alerting.alertmanagers, rule_files
+# Xem chi tiết: TaiLieu_BanGiaoNhiemVu_AI.docx - Phần 1
