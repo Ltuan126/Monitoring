@@ -98,8 +98,14 @@ Monitoring/
 ## Ghi chú
 
 **Trên Windows/macOS:** Docker chạy container trong một máy ảo Linux, nên Node Exporter đọc
-`/proc` và `/sys` của **máy ảo đó** chứ không phải của hệ điều hành chủ. Số liệu RAM và Disk
-là của máy ảo. Muốn giám sát Windows thật thì cần `windows_exporter` chạy trực tiếp trên host.
+`/proc` và `/sys` của **máy ảo đó** chứ không phải của hệ điều hành chủ:
+
+- **CPU** — số nhân trùng với máy thật, phần trăm sử dụng phản ánh sát thực tế
+- **RAM** — là RAM cấp cho máy ảo, thường chỉ bằng một nửa RAM máy thật
+- **Disk** — các ổ của Windows được mount vào máy ảo qua giao thức `9p` tại `/mnt/host/c`,
+  `/mnt/host/e`... nên dung lượng đọc được **là số liệu thật của ổ đĩa Windows**
+
+Muốn giám sát đầy đủ CPU/RAM của Windows thì cần `windows_exporter` chạy trực tiếp trên host.
 
 **Về secret:** không commit bot token, SMTP password hay webhook thật vào `alertmanager.yml`.
 Dùng giá trị giả trong file được commit và chỉ điền giá trị thật ở máy local.
