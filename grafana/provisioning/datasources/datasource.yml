@@ -1,2 +1,10 @@
-# TODO (Quang): khai báo Prometheus làm Data Source
-# Xem chi tiết: TaiLieu_BanGiaoNhiemVu_AI.docx - Phần 2
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
