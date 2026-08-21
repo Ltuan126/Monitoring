@@ -1,2 +1,88 @@
-# TODO (Hoàng): định nghĩa Alert rule (CPU/RAM/Disk vượt ngưỡng...)
-# Xem chi tiết: TaiLieu_BanGiaoNhiemVu_AI.docx - Phần 3
+# Alert rules for Monitoring project
+# - Uses Node Exporter metrics: node_cpu_seconds_total, node_memory_*, node_filesystem_*
+# - Severity labels: "warning" or "critical" only
+
+
+groups:
+  - name: node_resource_alerts
+    rules:
+
+      - alert: CPUUsageWarning
+        expr: |
+          (100 * (1 - (sum by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))
+                      / sum by (instance) (rate(node_cpu_seconds_total[5m])))) > 70)
+          and
+          (100 * (1 - (sum by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))
+                      / sum by (instance) (rate(node_cpu_seconds_total[5m])))) <= 90)
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage (warning) on {{ $labels.instance }}"
+          description: |
+            CPU usage is above 70% for more than 5 minutes on instance {{ $labels.instance }}.
+            Query: 100 * (1 - idle/total) using node_cpu_seconds_total.
+
+      - alert: RAMUsageWarning
+        expr: |
+          (100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 75)
+          and
+          (100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) <= 90)
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage (warning) on {{ $labels.instance }}"
+          description: |
+            Memory usage is above 75% for more than 5 minutes on instance {{ $labels.instance }}.
+            Query: 100 * (1 - MemAvailable / MemTotal).
+
+      - alert: CPUUsageCritical
+        expr: |
+          100 * (1 - (sum by (instance) (rate(node_cpu_seconds_total{mode="idle"}[3m]))
+                     / sum by (instance) (rate(node_cpu_seconds_total[3m])))) > 90
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High CPU usage (critical) on {{ $labels.instance }}"
+          description: |
+            CPU usage is above 90% for more than 3 minutes on instance {{ $labels.instance }}.
+            This is a critical condition requiring immediate attention.
+
+      - alert: RAMUsageCritical
+        expr: |
+          100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 90
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High memory usage (critical) on {{ $labels.instance }}"
+          description: |
+            Memory usage is above 90% for more than 3 minutes on instance {{ $labels.instance }}.
+            This is a critical condition requiring immediate attention.
+
+      - alert: DiskSpaceCritical
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low disk free space (critical) on {{ $labels.instance }}"
+          description: |
+            Available disk space on mountpoint '/' is below 10% on instance {{ $labels.instance }}.
+            Adjust mountpoint in the rule if your relevant filesystem is different (e.g. /mnt/*).
+
+      - alert: TargetDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Target down: {{ $labels.instance }} (job={{ $labels.job }})"
+          description: |
+            The Prometheus target for job={{ $labels.job }}, instance={{ $labels.instance }} is DOWN (up == 0).
+            Verify the target's service/container and network connectivity.
+
+
