@@ -1,2 +1,55 @@
-# TODO (Hoàng): cấu hình route + receivers (Telegram/Email/Slack)
-# Xem chi tiết: TaiLieu_BanGiaoNhiemVu_AI.docx - Phần 3
+# Alertmanager configuration
+# Routes alerts by `severity` label (warning / critical) and forwards to Telegram receivers.
+
+global:
+  resolve_timeout: 5m
+
+route:
+  # Group alerts by alertname, job and instance to avoid noisy single alerts
+  group_by: ['alertname', 'job', 'instance']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 1h
+
+  routes:
+    - match:
+        severity: critical
+      receiver: telegram-critical
+      continue: false
+
+    - match:
+        severity: warning
+      receiver: telegram-warning
+      continue: false
+
+  # default receiver if no route matches
+  receiver: telegram-warning
+
+inhibit_rules:
+  # If a critical alert is firing, inhibit corresponding warning for same alertname/job/instance
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'job', 'instance']
+
+receivers:
+  - name: telegram-warning
+    telegram_configs:
+      - send_resolved: true
+        bot_token: '<TELEGRAM_BOT_TOKEN>'
+        chat_id: '<TELEGRAM_CHAT_ID>'
+        message: "[WARNING] {{ .CommonLabels.alertname }} on {{ .CommonLabels.instance }}\nSummary: {{ .CommonAnnotations.summary }}\nDetails: {{ .CommonAnnotations.description }}"
+
+  - name: telegram-critical
+    telegram_configs:
+      - send_resolved: true
+        bot_token: '<TELEGRAM_BOT_TOKEN>'
+        chat_id: '<TELEGRAM_CHAT_ID>'
+        message: "[CRITICAL] {{ .CommonLabels.alertname }} on {{ .CommonLabels.instance }}\nSummary: {{ .CommonAnnotations.summary }}\nDetails: {{ .CommonAnnotations.description }}"
+
+templates: []
+
+# Notes:
+# - Replace <TELEGRAM_BOT_TOKEN> and <TELEGRAM_CHAT_ID> locally (see README below) before running.
+# - Do NOT commit real tokens or chat IDs to the repository. Use environment-mounted files or CI secret stores.
