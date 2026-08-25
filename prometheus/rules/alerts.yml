@@ -9,11 +9,11 @@ groups:
 
       - alert: CPUUsageWarning
         expr: |
-          (100 * (1 - (sum by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))
-                      / sum by (instance) (rate(node_cpu_seconds_total[5m])))) > 70)
+          (100 * (1 - (sum by (instance) (rate(node_cpu_seconds_total{job="node-exporter",mode="idle"}[5m]))
+                      / sum by (instance) (rate(node_cpu_seconds_total{job="node-exporter"}[5m])))) > 70)
           and
-          (100 * (1 - (sum by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))
-                      / sum by (instance) (rate(node_cpu_seconds_total[5m])))) <= 90)
+          (100 * (1 - (sum by (instance) (rate(node_cpu_seconds_total{job="node-exporter",mode="idle"}[5m]))
+                      / sum by (instance) (rate(node_cpu_seconds_total{job="node-exporter"}[5m])))) <= 90)
         for: 5m
         labels:
           severity: warning
@@ -25,9 +25,9 @@ groups:
 
       - alert: RAMUsageWarning
         expr: |
-          (100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 75)
+          (100 * (1 - (node_memory_MemAvailable_bytes{job="node-exporter"} / node_memory_MemTotal_bytes{job="node-exporter"})) > 75)
           and
-          (100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) <= 90)
+          (100 * (1 - (node_memory_MemAvailable_bytes{job="node-exporter"} / node_memory_MemTotal_bytes{job="node-exporter"})) <= 90)
         for: 5m
         labels:
           severity: warning
@@ -39,8 +39,8 @@ groups:
 
       - alert: CPUUsageCritical
         expr: |
-          100 * (1 - (sum by (instance) (rate(node_cpu_seconds_total{mode="idle"}[3m]))
-                     / sum by (instance) (rate(node_cpu_seconds_total[3m])))) > 90
+          100 * (1 - (sum by (instance) (rate(node_cpu_seconds_total{job="node-exporter",mode="idle"}[3m]))
+                     / sum by (instance) (rate(node_cpu_seconds_total{job="node-exporter"}[3m])))) > 90
         for: 3m
         labels:
           severity: critical
@@ -52,7 +52,7 @@ groups:
 
       - alert: RAMUsageCritical
         expr: |
-          100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 90
+          100 * (1 - (node_memory_MemAvailable_bytes{job="node-exporter"} / node_memory_MemTotal_bytes{job="node-exporter"})) > 90
         for: 3m
         labels:
           severity: critical
@@ -64,15 +64,16 @@ groups:
 
       - alert: DiskSpaceCritical
         expr: |
-          (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10
+          (node_filesystem_avail_bytes{job="node-exporter", fstype!~"tmpfs|overlay"}
+           / node_filesystem_size_bytes{job="node-exporter", fstype!~"tmpfs|overlay"}) * 100 < 10
         for: 1m
         labels:
           severity: critical
         annotations:
-          summary: "Low disk free space (critical) on {{ $labels.instance }}"
+          summary: "Low disk free space (critical) on {{ $labels.instance }}, mount {{ $labels.mountpoint }}"
           description: |
-            Available disk space on mountpoint '/' is below 10% on instance {{ $labels.instance }}.
-            Adjust mountpoint in the rule if your relevant filesystem is different (e.g. /mnt/*).
+            Available disk space on mountpoint '{{ $labels.mountpoint }}' is below 10% on instance {{ $labels.instance }}.
+            Filesystem type: {{ $labels.fstype }}, device: {{ $labels.device }}.
 
       - alert: TargetDown
         expr: up == 0
